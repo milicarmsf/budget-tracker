@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Budget Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#f5f3ee;font-family:'DM Sans',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 16px 60px}
+  input:focus{outline:none;border-color:#c8a800!important;box-shadow:0 0 0 3px rgba(200,168,0,.15)!important}
+  .catbtn{transition:all .15s;border:1.5px solid #ddd;cursor:pointer;background:transparent;color:#666;padding:8px 13px;border-radius:40px;font-size:13px;display:inline-flex;align-items:center;gap:5px;font-family:'DM Sans',sans-serif}
+  .catbtn:hover{border-color:#c8a800;color:#c8a800;background:#fffbe6}
+  .catbtn.on{background:#f0c040;color:#1a1400;border-color:#c8a800;font-weight:700}
+  .card{background:#fff;border:1px solid #e8e4d8;border-radius:20px;padding:24px 20px;width:100%;max-width:480px;box-shadow:0 8px 32px rgba(0,0,0,.08)}
+  .label{color:#aaa;font-size:11px;font-weight:700;letter-spacing:2px;display:block;margin-bottom:8px}
+  .inp{width:100%;background:#f9f7f2;border:1px solid #ddd;color:#1a1400;border-radius:10px;padding:12px 14px;font-size:14px;font-family:'DM Sans',sans-serif}
+  .btn-primary{width:100%;background:#f0c040;color:#1a1400;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity .2s}
+  .btn-primary:disabled{opacity:0.4;cursor:not-allowed}
+  .btn-ghost{background:none;border:none;color:#aaa;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;padding:0}
+  @keyframes slideDown{from{opacity:0;transform:translateX(-50%) translateY(-8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .toast{position:fixed;top:18px;left:50%;transform:translateX(-50%);padding:11px 26px;border-radius:40px;font-weight:700;font-size:14px;z-index:999;box-shadow:0 8px 32px rgba(0,0,0,.3);animation:slideDown .2s ease;white-space:nowrap;font-family:'DM Sans',sans-serif}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:998;padding:16px}
+  .modal{background:#fff;border-radius:20px;padding:28px;max-width:480px;width:100%;max-height:90vh;overflow:auto}
+  .step-num{width:26px;height:26px;border-radius:50%;background:#f0c040;color:#000;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px;flex-shrink:0;margin-top:2px}
+  pre{background:#f4f2eb;color:#2a6040;font-size:11px;padding:16px;border-radius:10px;overflow:auto;max-height:220px;line-height:1.6;border:1px solid #e0ddd0;white-space:pre-wrap;word-break:break-word}
+  .summary-card{background:#fff;border:1px solid #e8e4d8;border-radius:16px;padding:18px 20px;width:100%;max-width:480px;margin-bottom:16px}
+  .progress-track{background:#eee;border-radius:99px;height:7px;overflow:hidden;margin-bottom:6px}
+  .progress-bar{height:100%;border-radius:99px;transition:width .6s ease}
+  .err-box{color:#e05a5a;font-size:13px;margin-bottom:12px;background:rgba(224,90,90,.1);padding:10px 14px;border-radius:8px}
+  h1{font-family:'Playfair Display',serif;font-size:clamp(24px,5vw,36px);font-weight:900;color:#1a1400;line-height:1.1}
+  h2{font-family:'Playfair Display',serif}
+</style>
+</head>
+<body>
+
+<div id="toast" class="toast" style="display:none"></div>
+
+<!-- SCRIPT MODAL -->
+<div id="scriptModal" class="overlay" style="display:none">
+  <div class="modal">
+    <h2 style="color:#c8a800;margin-bottom:6px;font-size:22px">Setup Guide</h2>
+    <p style="color:#999;font-size:13px;margin-bottom:20px">Do this once and the app is connected forever.</p>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:18px">
+      <div style="display:flex;gap:12px"><div class="step-num">1</div><div><div style="color:#1a1400;font-weight:600;font-size:14px">Open Apps Script</div><div style="color:#999;font-size:13px">Google Sheet → Extensions → Apps Script</div></div></div>
+      <div style="display:flex;gap:12px"><div class="step-num">2</div><div><div style="color:#1a1400;font-weight:600;font-size:14px">Paste & Save</div><div style="color:#999;font-size:13px">Delete existing code, paste script below, Ctrl+S</div></div></div>
+      <div style="display:flex;gap:12px"><div class="step-num">3</div><div><div style="color:#1a1400;font-weight:600;font-size:14px">Deploy as Web App</div><div style="color:#999;font-size:13px">Deploy → Manage deployments → pencil icon → New version → Deploy</div></div></div>
+      <div style="display:flex;gap:12px"><div class="step-num">4</div><div><div style="color:#1a1400;font-weight:600;font-size:14px">Copy URL</div><div style="color:#999;font-size:13px">Paste the Web App URL into the app</div></div></div>
+    </div>
+    <div style="position:relative">
+      <pre id="scriptText"></pre>
+      <button onclick="copyScript()" id="copyBtn" style="position:absolute;top:10px;right:10px;background:#f0c040;color:#000;border:none;border-radius:6px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer">Copy</button>
+    </div>
+    <button onclick="closeModal('scriptModal')" style="margin-top:14px;width:100%;background:#f0ece0;color:#555;border:none;border-radius:10px;padding:12px;font-size:14px;cursor:pointer;font-weight:600;font-family:'DM Sans',sans-serif">Close</button>
+  </div>
+</div>
+
+<!-- BUDGET MODAL -->
+<div id="budgetModal" class="overlay" style="display:none">
+  <div class="modal" style="border:2px solid #f0c040;text-align:center;max-width:360px">
+    <div style="font-size:44px;margin-bottom:10px">🗓️</div>
+    <h2 style="color:#c8a800;margin-bottom:8px;font-size:24px">New Month!</h2>
+    <p style="color:#777;font-size:14px;margin-bottom:6px;line-height:1.6">A new sheet for <strong id="monthName" style="color:#1a1400"></strong> has been created in your Google doc.</p>
+    <p style="color:#777;font-size:14px;margin-bottom:22px">What is the total budget for this month?</p>
+    <input id="budgetInput" type="number" placeholder="e.g. 3000" class="inp" style="font-size:22px;font-weight:700;font-family:'Playfair Display',serif;text-align:center;margin-bottom:16px" onkeydown="if(event.key==='Enter')saveBudget()"/>
+    <button onclick="saveBudget()" id="budgetSaveBtn" class="btn-primary" style="font-size:16px;font-weight:800">Set Budget</button>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div style="text-align:center;margin-bottom:20px;margin-top:4px">
+  <div style="color:#b8960a;font-size:10px;letter-spacing:5px;font-weight:700;margin-bottom:5px">HOUSEHOLD</div>
+  <h1>Budget Tracker</h1>
+  <div id="monthLabel" style="color:#999;font-size:12px;margin-top:4px;letter-spacing:1px"></div>
+</div>
+
+<!-- BUDGET SUMMARY -->
+<div id="summaryCard" class="summary-card" style="display:none">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+    <div>
+      <div class="label" style="margin-bottom:3px">BUDGET</div>
+      <div id="sumBudget" style="color:#4caf82;font-size:22px;font-weight:800;font-family:'Playfair Display',serif">$0.00</div>
+    </div>
+    <div style="text-align:center">
+      <div class="label" style="margin-bottom:3px">REMAINING</div>
+      <div id="sumRemaining" style="font-size:22px;font-weight:800;font-family:'Playfair Display',serif;color:#1a1400">$0.00</div>
+    </div>
+    <div style="text-align:right">
+      <div class="label" style="margin-bottom:3px">SPENT</div>
+      <div id="sumSpent" style="color:#e05a5a;font-size:22px;font-weight:800;font-family:'Playfair Display',serif">$0.00</div>
+    </div>
+  </div>
+  <div class="progress-track">
+    <div id="progressBar" class="progress-bar" style="width:0%;background:linear-gradient(90deg,#4caf82,#f0c040)"></div>
+  </div>
+  <div id="overWarning" style="color:#e05a5a;font-size:12px;font-weight:700;text-align:center;animation:pulse 1.4s infinite;margin-top:6px;display:none"></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+    <button class="btn-ghost" onclick="showBudgetModal()">✏️ Update budget</button>
+    <button class="btn-ghost" onclick="doRefresh()" style="display:flex;align-items:center;gap:4px"><span id="refreshIcon">↻</span> Refresh</button>
+  </div>
+</div>
+
+<!-- MAIN CARD -->
+<div class="card">
+  <!-- CONNECTION -->
+  <div id="connectScreen">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <div style="color:#1a1400;font-weight:700;font-size:16px">Connect Google Sheet</div>
+      <button onclick="document.getElementById('scriptModal').style.display='flex'" style="background:transparent;border:1px solid #c8a800;color:#c8a800;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;font-weight:600;font-family:'DM Sans',sans-serif">Setup Guide</button>
+    </div>
+    <label class="label">APPS SCRIPT WEB APP URL</label>
+    <input id="urlInput" class="inp" type="url" placeholder="https://script.google.com/macros/s/.../exec" style="margin-bottom:12px"/>
+    <div id="connectErr" class="err-box" style="display:none"></div>
+    <button id="connectBtn" class="btn-primary" onclick="doConnect()">Connect & Load Sheet</button>
+  </div>
+
+  <!-- ENTRY FORM -->
+  <div id="entryForm" style="display:none">
+    <label class="label">CATEGORY</label>
+    <div id="catButtons" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px"></div>
+    <div id="catSpent" style="display:none;background:#fffbe6;border:1px solid #f0c040;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;color:#8a6d00;margin-bottom:18px"></div>
+    <label class="label">AMOUNT ($)</label>
+    <input id="amountInput" type="number" placeholder="0.00" class="inp" style="font-size:26px;font-weight:700;font-family:'Playfair Display',serif;margin-bottom:14px" oninput="updateSubmitBtn()"/>
+    <label class="label">NOTE (optional)</label>
+    <input id="noteInput" type="text" placeholder="e.g. Grocery run at Costco" class="inp" style="margin-bottom:22px" onkeydown="if(event.key==='Enter')doSubmit()"/>
+    <button id="submitBtn" class="btn-primary" onclick="doSubmit()" disabled>Add</button>
+    <div style="display:flex;justify-content:space-between;margin-top:14px">
+      <button class="btn-ghost" onclick="document.getElementById('scriptModal').style.display='flex'">📋 Script</button>
+      <button class="btn-ghost" onclick="disconnect()">← Change sheet</button>
+    </div>
+  </div>
+</div>
+
+<p style="color:#bbb;font-size:12px;margin-top:18px;text-align:center;max-width:360px;line-height:1.6">
+  Both you and your husband bookmark this page. Numbers sync every 30 seconds or tap Refresh.
+</p>
+
+<script>
+const CATEGORIES = [
+  {id:"leo",label:"For Leo",emoji:"🦁"},
+  {id:"bills",label:"Bills & Subscriptions",emoji:"📄"},
+  {id:"food",label:"Food & Supplies",emoji:"🛒"},
+  {id:"car",label:"Car & Transport",emoji:"🚗"},
+  {id:"goingout",label:"Going Out, Food & Drinks",emoji:"🍹"},
+  {id:"wardrobe",label:"Wardrobe",emoji:"👗"},
+  {id:"wellbeing",label:"Wellbeing",emoji:"🌿"},
+  {id:"gifts",label:"Gifts",emoji:"🎁"},
+  {id:"other",label:"Other",emoji:"📦"},
+  {id:"travel",label:"Travel",emoji:"✈️"},
+];
+
+const SCRIPT_CODE = `// ════════════════════════════════════════════════════════
+//  BUDGET TRACKER — Google Apps Script
+//  Extensions → Apps Script → paste → Save → Deploy → Web App
+//  Execute as: Me  |  Who has access: Anyone
+// ════════════════════════════════════════════════════════
+
+var CATEGORIES = [
+  "For Leo","Bills & Subscriptions","Food & Supplies",
+  "Car & Transport","Going Out, Food & Drinks","Wardrobe",
+  "Wellbeing","Gifts","Other","Travel"
+];
+var CONFIG_SHEET = "Config";
+var CAT_START_ROW = 8; // rows 1-7 = summary, categories from row 8
+
+function getMonthName() {
+  return Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "MMM yyyy");
+}
+
+function getConfig(ss) {
+  var s = ss.getSheetByName(CONFIG_SHEET);
+  if (!s) {
+    s = ss.insertSheet(CONFIG_SHEET);
+    s.hideSheet();
+    s.getRange(1,1).setValue("budget"); s.getRange(1,2).setValue(0);
+    s.getRange(2,1).setValue("month");  s.getRange(2,2).setValue("");
+  }
+  return s;
+}
+
+// Write a plain white entry row — no insertion, just set values and format
+function writeEntryRow(sheet, row, amount, note) {
+  sheet.getRange(row,1,1,3).clearFormat();
+  sheet.getRange(row,1,1,3).setBackground("#ffffff").setFontColor("#222222")
+    .setFontWeight("normal").setFontSize(10);
+  sheet.getRange(row,1).setValue(amount).setHorizontalAlignment("right");
+  sheet.getRange(row,2).setValue(note).setHorizontalAlignment("left");
+  sheet.getRange(row,3).setValue("").setHorizontalAlignment("left");
+}
+
+// Write an empty buffer row — plain white, no values
+function writeBufferRow(sheet, row) {
+  sheet.getRange(row,1,1,3).clearFormat();
+  sheet.getRange(row,1,1,3).setBackground("#ffffff").setFontColor("#222222")
+    .setFontWeight("normal").setFontSize(10);
+  sheet.getRange(row,1).setValue("");
+  sheet.getRange(row,2).setValue("");
+  sheet.getRange(row,3).setValue("");
+}
+
+// Write category header with total in col C
+function writeCategoryHeader(sheet, row, catName, total) {
+  sheet.getRange(row,1,1,3).clearFormat();
+  sheet.getRange(row,1,1,3).setBackground("#1a1400").setFontColor("#f0c040")
+    .setFontWeight("bold").setFontSize(11);
+  sheet.getRange(row,1).setValue(catName).setHorizontalAlignment("left");
+  sheet.getRange(row,2).setValue("").setHorizontalAlignment("left");
+  sheet.getRange(row,3).setValue(total > 0 ? total : "")
+    .setHorizontalAlignment("right")
+    .setNumberFormat('"$"#,##0');
+}
+
+function buildSummary(sheet, budget, spent) {
+  var remaining = budget - spent;
+  sheet.getRange(1,1,1,3).merge()
+    .setValue("MONTHLY BUDGET SUMMARY")
+    .setFontWeight("bold").setFontSize(14)
+    .setBackground("#1a1400").setFontColor("#f0c040")
+    .setHorizontalAlignment("center");
+  sheet.getRange(2,1).setValue("BUDGET").setFontWeight("bold").setHorizontalAlignment("center");
+  sheet.getRange(2,2).setValue("SPENT").setFontWeight("bold").setHorizontalAlignment("center");
+  sheet.getRange(2,3).setValue("REMAINING").setFontWeight("bold").setHorizontalAlignment("center");
+  sheet.getRange(2,1,1,3).setBackground("#f0c040").setFontColor("#1a1400");
+  sheet.getRange(3,1).setValue(budget).setNumberFormat('"$"#,##0').setFontColor("#4caf82").setFontWeight("bold").setFontSize(13).setHorizontalAlignment("center");
+  sheet.getRange(3,2).setValue(spent).setNumberFormat('"$"#,##0').setFontColor("#e05a5a").setFontWeight("bold").setFontSize(13).setHorizontalAlignment("center");
+  sheet.getRange(3,3).setValue(remaining).setNumberFormat('"$"#,##0').setFontColor(remaining < 0 ? "#e05a5a" : "#1a6035").setFontWeight("bold").setFontSize(13).setHorizontalAlignment("center");
+  sheet.getRange(4,1,1,3).setBackground("#f9f7f2");
+  sheet.getRange(5,1,1,3).merge()
+    .setValue("Last updated: " + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd MMM yyyy HH:mm"))
+    .setFontColor("#aaa").setFontSize(10).setHorizontalAlignment("center").setBackground("#ffffff");
+  sheet.getRange(6,1,1,3).setBackground("#ffffff");
+  sheet.getRange(7,1,1,3).merge()
+    .setValue("EXPENSES BY CATEGORY")
+    .setFontWeight("bold").setFontSize(11)
+    .setBackground("#e8f4ec").setFontColor("#1a6035")
+    .setHorizontalAlignment("center");
+  sheet.setColumnWidth(1,140);
+  sheet.setColumnWidth(2,280);
+  sheet.setColumnWidth(3,120);
+}
+
+// Read all entries for a category and return {rows: [...], total: n}
+// Scans from catHeaderRow+1 downward until it hits the next category or runs out
+function readCategoryBlock(allValues, catHeaderRowIdx) {
+  var entries = [];
+  var total = 0;
+  var i = catHeaderRowIdx + 1;
+  while (i < allValues.length) {
+    var v = allValues[i][0];
+    var vStr = String(v).trim();
+    // Stop if we hit another category header (non-empty, non-numeric)
+    if (vStr !== "" && isNaN(Number(vStr))) break;
+    if (typeof v === "number" && v > 0) { entries.push(i); total += v; }
+    else if (vStr !== "" && !isNaN(parseFloat(vStr)) && parseFloat(vStr) > 0) {
+      entries.push(i); total += parseFloat(vStr);
+    }
+    i++;
+  }
+  total = Math.round(total * 100) / 100;
+  return { entries: entries, total: total, nextCatIdx: i };
+}
+
+function getOrCreateMonthSheet(ss, name, budget) {
+  var sheet = ss.getSheetByName(name);
+  if (!sheet) {
+    sheet = ss.insertSheet(name, 0);
+    buildSummary(sheet, budget || 0, 0);
+    // Write each category header + 5 blank item rows + 1 buffer row
+    var row = CAT_START_ROW;
+    for (var i = 0; i < CATEGORIES.length; i++) {
+      writeCategoryHeader(sheet, row, CATEGORIES[i], 0);
+      for (var j = 1; j <= 6; j++) {  // 5 item rows + 1 buffer
+        writeBufferRow(sheet, row + j);
+      }
+      row += 7; // 1 header + 5 items + 1 buffer
+    }
+  }
+  return sheet;
+}
+
+function calcSpent(allValues) {
+  var spent = 0;
+  for (var i = CAT_START_ROW - 1; i < allValues.length; i++) {
+    var v = allValues[i][0];
+    if (typeof v === "number" && v > 0) spent += v;
+    else if (typeof v === "string" && v.trim() !== "" && !isNaN(parseFloat(v)) && parseFloat(v) > 0) spent += parseFloat(v);
+  }
+  return Math.round(spent * 100) / 100;
+}
+
+function doGet(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var config = getConfig(ss);
+    var budget = parseFloat(config.getRange(1,2).getValue()) || 0;
+    var monthName = getMonthName();
+    var sheet = getOrCreateMonthSheet(ss, monthName, budget);
+    var allValues = sheet.getDataRange().getValues();
+    var spent = calcSpent(allValues);
+    buildSummary(sheet, budget, spent);
+    // Build per-category totals
+    var catTotals = {};
+    for (var i = CAT_START_ROW - 1; i < allValues.length; i++) {
+      var cellVal = String(allValues[i][0]).trim();
+      if (cellVal !== "" && isNaN(Number(cellVal))) {
+        // This is a category header — find its block total
+        var block = readCategoryBlock(allValues, i);
+        catTotals[cellVal] = block.total;
+      }
+    }
+    return ContentService.createTextOutput(JSON.stringify({
+      success:true, budget:budget, spent:spent,
+      remaining:Math.round((budget-spent)*100)/100, month:monthName,
+      catTotals:catTotals
+    })).setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    return ContentService.createTextOutput(JSON.stringify({success:false,error:err.toString()})).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var config = getConfig(ss);
+    var budget = parseFloat(config.getRange(1,2).getValue()) || 0;
+    var monthName = getMonthName();
+    var sheet = getOrCreateMonthSheet(ss, monthName, budget);
+
+    if (data.action === "set_budget") {
+      config.getRange(1,2).setValue(data.budget);
+      config.getRange(2,2).setValue(monthName);
+      var allVals = sheet.getDataRange().getValues();
+      buildSummary(sheet, data.budget, calcSpent(allVals));
+      return ContentService.createTextOutput(JSON.stringify({success:true,month:monthName})).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (data.action === "add_entry") {
+      var category = data.category;
+      var amount = parseFloat(data.amount);
+      var note = data.note || "";
+
+      // Find category header row by scanning — reliable even as rows shift
+      var allValues = sheet.getDataRange().getValues();
+      var catHeaderIdx = -1;
+      for (var i = CAT_START_ROW - 1; i < allValues.length; i++) {
+        var cellVal = String(allValues[i][0]).trim().toLowerCase();
+        if (cellVal === category.trim().toLowerCase()) { catHeaderIdx = i; break; }
+      }
+      if (catHeaderIdx === -1) return ContentService.createTextOutput(
+        JSON.stringify({success:false,error:"Category not found: "+category})
+      ).setMimeType(ContentService.MimeType.JSON);
+
+      // Read the category block to find last filled entry row
+      var block = readCategoryBlock(allValues, catHeaderIdx);
+
+      // The write row is: last entry row + 1 (0-based) + 1 (to 1-based) = last entry + 2
+      // If no entries yet, write into first row below header
+      var writeRowIdx; // 0-based
+      if (block.entries.length === 0) {
+        writeRowIdx = catHeaderIdx + 1;
+      } else {
+        writeRowIdx = block.entries[block.entries.length - 1] + 1;
+      }
+      var writeRow = writeRowIdx + 1; // convert to 1-based sheet row
+
+      // Write the entry — NO row insertion, just setValue into existing row
+      writeEntryRow(sheet, writeRow, amount, note);
+
+      // Write a buffer row below the entry (also no insertion — just clear the next row)
+      writeBufferRow(sheet, writeRow + 1);
+
+      // Update category total in col C of its header row
+      var newBlock = readCategoryBlock(allValues, catHeaderIdx);
+      // Re-read after write (need fresh values)
+      var freshValues = sheet.getDataRange().getValues();
+      var freshBlock = readCategoryBlock(freshValues, catHeaderIdx);
+      writeCategoryHeader(sheet, catHeaderIdx + 1, category, freshBlock.total + amount);
+
+      // Update top summary
+      var totalSpent = calcSpent(freshValues) + amount;
+      buildSummary(sheet, budget, totalSpent);
+
+      return ContentService.createTextOutput(JSON.stringify({success:true})).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({success:false,error:"Unknown action"})).setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    return ContentService.createTextOutput(JSON.stringify({success:false,error:err.toString()})).setMimeType(ContentService.MimeType.JSON);
+  }
+}`;
+
+document.getElementById("scriptText").textContent = SCRIPT_CODE;
+
+let scriptUrl = localStorage.getItem("bt_url") || "";
+let budget = 0, spent = 0, currentMonth = "";
+let selectedCat = CATEGORIES[0].label;
+let catTotals = {};
+let pollTimer = null;
+
+buildCatButtons();
+if (scriptUrl) {
+  document.getElementById("urlInput").value = scriptUrl;
+  fetchState(scriptUrl).then(() => { showEntryForm(); startPolling(); }).catch(()=>{});
+}
+
+function buildCatButtons() {
+  const c = document.getElementById("catButtons");
+  c.innerHTML = "";
+  CATEGORIES.forEach(cat => {
+    const b = document.createElement("button");
+    b.className = "catbtn" + (cat.label === selectedCat ? " on" : "");
+    b.innerHTML = `<span>${cat.emoji}</span><span>${cat.label}</span>`;
+    b.onclick = () => { selectedCat = cat.label; buildCatButtons(); updateSubmitBtn(); updateCatSpent(); };
+    c.appendChild(b);
+  });
+}
+
+function updateCatSpent() {
+  const el = document.getElementById("catSpent");
+  if (!el) return;
+  const total = catTotals[selectedCat] || 0;
+  if (total > 0) {
+    el.textContent = `$${Math.round(total).toLocaleString()} spent in ${selectedCat} this month`;
+    el.style.display = "block";
+  } else {
+    el.textContent = `Nothing spent in ${selectedCat} yet this month`;
+    el.style.display = "block";
+  }
+}
+
+function fmt(n) { return Math.abs(n).toLocaleString("en-US",{minimumFractionDigits:0,maximumFractionDigits:0}); }
+
+function showToast(msg, type="success") {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.style.background = type==="error" ? "#c0392b" : "#27ae60";
+  t.style.display = "block";
+  setTimeout(()=>t.style.display="none", 3500);
+}
+
+function updateSummary() {
+  const rem = budget - spent;
+  const over = rem < 0;
+  const pct = budget > 0 ? Math.min((spent/budget)*100,100) : 0;
+  document.getElementById("sumBudget").textContent = "$"+fmt(budget);
+  document.getElementById("sumSpent").textContent = "$"+fmt(spent);
+  document.getElementById("sumRemaining").textContent = (over?"−":"")+"$"+fmt(rem);
+  document.getElementById("sumRemaining").style.color = over ? "#e05a5a" : "#1a1400";
+  const bar = document.getElementById("progressBar");
+  bar.style.width = pct+"%";
+  bar.style.background = over ? "#e05a5a" : "linear-gradient(90deg,#4caf82,#f0c040)";
+  const warn = document.getElementById("overWarning");
+  warn.style.display = over ? "block" : "none";
+  if (over) warn.textContent = "⚠️ Over budget by $"+fmt(Math.abs(rem));
+  const sub = document.getElementById("submitBtn");
+  if (sub) sub.style.background = over ? "#c0392b" : "#f0c040";
+}
+
+function updateSubmitBtn() {
+  const amt = parseFloat(document.getElementById("amountInput").value);
+  const btn = document.getElementById("submitBtn");
+  if (!btn) return;
+  btn.disabled = !amt || amt <= 0;
+  btn.textContent = `Add $${amt>0?Math.round(amt):"0"} → ${selectedCat}`;
+}
+
+function showEntryForm() {
+  document.getElementById("connectScreen").style.display = "none";
+  document.getElementById("entryForm").style.display = "block";
+  document.getElementById("summaryCard").style.display = "block";
+  document.getElementById("monthLabel").textContent = currentMonth;
+  updateSummary();
+  updateCatSpent();
+}
+
+function disconnect() {
+  localStorage.removeItem("bt_url");
+  scriptUrl = "";
+  clearInterval(pollTimer);
+  document.getElementById("connectScreen").style.display = "block";
+  document.getElementById("entryForm").style.display = "none";
+  document.getElementById("summaryCard").style.display = "none";
+  document.getElementById("monthLabel").textContent = "";
+}
+
+function closeModal(id) { document.getElementById(id).style.display = "none"; }
+
+function showBudgetModal() {
+  document.getElementById("monthName").textContent = currentMonth;
+  document.getElementById("budgetInput").value = "";
+  document.getElementById("budgetModal").style.display = "flex";
+  setTimeout(()=>document.getElementById("budgetInput").focus(),100);
+}
+
+function copyScript() {
+  navigator.clipboard.writeText(SCRIPT_CODE).then(()=>{
+    const b = document.getElementById("copyBtn");
+    b.textContent="✓ Copied!"; b.style.background="#4caf82";
+    setTimeout(()=>{ b.textContent="Copy"; b.style.background="#f0c040"; },2500);
+  });
+}
+
+async function fetchState(url) {
+  const res = await fetch(url || scriptUrl);
+  const data = await res.json();
+  if (data.success) {
+    budget = data.budget || 0;
+    spent = data.spent || 0;
+    currentMonth = data.month || "";
+    catTotals = data.catTotals || {};
+    updateSummary();
+    updateCatSpent();
+    document.getElementById("monthLabel").textContent = currentMonth;
+    if (!budget || budget === 0) showBudgetModal();
+  }
+  return data;
+}
+
+async function doConnect() {
+  const url = document.getElementById("urlInput").value.trim().replace(/\/$/,"");
+  if (!url) return;
+  const btn = document.getElementById("connectBtn");
+  const err = document.getElementById("connectErr");
+  btn.disabled = true; btn.textContent = "Connecting…"; err.style.display="none";
+  try {
+    const data = await fetchState(url);
+    if (data.success) {
+      scriptUrl = url;
+      localStorage.setItem("bt_url", url);
+      showEntryForm();
+      startPolling();
+      if (!budget || budget===0) showBudgetModal();
+    } else {
+      err.textContent = data.error || "Connection failed.";
+      err.style.display = "block";
+    }
+  } catch(e) {
+    err.textContent = "Could not connect. Make sure the URL ends in /exec and the script is deployed.";
+    err.style.display = "block";
+  }
+  btn.disabled=false; btn.textContent="Connect & Load Sheet";
+}
+
+async function saveBudget() {
+  const val = parseFloat(document.getElementById("budgetInput").value);
+  if (!val||val<=0) return;
+  const btn = document.getElementById("budgetSaveBtn");
+  btn.disabled=true; btn.textContent="Saving…";
+  try {
+    const res = await fetch(scriptUrl,{method:"POST",body:JSON.stringify({action:"set_budget",budget:val})});
+    const data = await res.json();
+    if (data.success) {
+      budget=val; spent=0;
+      currentMonth = data.month || currentMonth;
+      document.getElementById("monthLabel").textContent = currentMonth;
+      updateSummary();
+      closeModal("budgetModal");
+      showToast("Budget set to $"+fmt(val)+" for "+currentMonth+" 🎯");
+    } else { showToast(data.error||"Failed to save budget.","error"); }
+  } catch { showToast("Network error.","error"); }
+  btn.disabled=false; btn.textContent="Set Budget";
+}
+
+async function doSubmit() {
+  const amt = parseFloat(document.getElementById("amountInput").value);
+  const note = document.getElementById("noteInput").value.trim();
+  if (!amt||amt<=0) return;
+  const btn = document.getElementById("submitBtn");
+  btn.disabled=true; btn.textContent="Adding…";
+  try {
+    const res = await fetch(scriptUrl,{method:"POST",body:JSON.stringify({action:"add_entry",category:selectedCat,amount:amt,note})});
+    const data = await res.json();
+    if (data.success) {
+      spent = Math.round((spent+amt)*100)/100;
+      catTotals[selectedCat] = (catTotals[selectedCat] || 0) + amt;
+      updateSummary();
+      updateCatSpent();
+      showToast("$"+Math.round(amt)+" added to "+selectedCat+" ✓");
+      document.getElementById("amountInput").value="";
+      document.getElementById("noteInput").value="";
+      updateSubmitBtn();
+    } else { showToast(data.error||"Error writing to sheet.","error"); }
+  } catch { showToast("Network error.","error"); }
+  btn.disabled=false; updateSubmitBtn();
+}
+
+async function doRefresh() {
+  const icon = document.getElementById("refreshIcon");
+  icon.style.animation="spin .8s linear infinite";
+  await fetchState().catch(()=>{});
+  icon.style.animation="none";
+}
+
+function startPolling() {
+  clearInterval(pollTimer);
+  pollTimer = setInterval(()=>fetchState().catch(()=>{}),30000);
+}
+</script>
+</body>
+</html>
